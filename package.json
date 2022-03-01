@@ -1,13 +1,17 @@
 {
   "name": "synthetics-pw-runner",
   "version": "0.0.0",
-  "description": "",
+  "description": "Synthetics runner using Playwright test",
   "main": "index.js",
   "scripts": {
     "test": "npx playwright test ./tests"
   },
-  "author": "",
+  "author": "Vignesh Shanmugam (https://vigneshh.in)",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/elastic/apm-agent-rum-js.git"
+  },
   "dependencies": {
     "@playwright/test": "^1.19.2",
     "kleur": "^4.1.4",

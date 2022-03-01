@@ -394,7 +394,7 @@ class JSONReporter implements Reporter {
     if (typeof message == "object") {
       message = JSON.stringify(message);
     }
-    // this.stream.write(message + "\n");
+    this.stream.write(message + "\n");
   }
 }
 export default JSONReporter;
