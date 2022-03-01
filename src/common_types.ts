@@ -30,7 +30,7 @@ import {
   ChromiumBrowser,
   ChromiumBrowserContext,
   Page,
-} from "playwright-core";
+} from "@playwright/test";
 
 export type VoidCallback = () => void;
 export type Params = Record<string, any>;

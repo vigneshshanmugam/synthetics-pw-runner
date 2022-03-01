@@ -4,14 +4,13 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "npx playwright test ./tests"
   },
   "author": "",
   "license": "MIT",
   "dependencies": {
     "@playwright/test": "^1.19.2",
     "kleur": "^4.1.4",
-    "playwright-core": "^1.19.2",
     "snakecase-keys": "^5.1.2",
     "sonic-boom": "^2.6.0"
   }

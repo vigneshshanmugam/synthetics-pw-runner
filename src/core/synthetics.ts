@@ -33,6 +33,7 @@ export { expect } from "@playwright/test";
 type SyntheticsTextFixtures = {
   context: ChromiumBrowserContext;
 };
+
 type SyntheticsWorkerFixtures = {
   _plugins: {
     network: NetworkManager;
@@ -47,7 +48,7 @@ export const journey = test.extend<
 >({
   browserName: [({}, use) => use("chromium"), { scope: "worker" }],
   _plugins: [
-    async ({}, use, workerinfo) => {
+    async ({}, use) => {
       const network = new NetworkManager();
       const browserconsole = new BrowserConsole();
       const tracing = new Tracing();
