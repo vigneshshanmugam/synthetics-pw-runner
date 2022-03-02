@@ -22,6 +22,7 @@ program
     "specify a file descriptor for logs. Default is stdout",
     parseInt
   )
+  .allowUnknownOption(true)
   .action(async (args, opts) => {
     try {
       await runTests(args, opts);
@@ -38,17 +39,16 @@ type CLIArgs = {
 };
 
 async function runTests(args: Array<string>, options: CLIArgs) {
-  const relativePaths = args.map((a) => resolve(a));
-
   const fd = options.outfd || process.stdout.fd;
   const stream = new SonicBoom({ fd, sync: true, minLength: 1 });
+  const pwBin = require.resolve("playwright/cli");
 
   const pwProcess = spawn(
     "node",
     [
-      "node_modules/.bin/playwright",
+      pwBin,
       "test",
-      ...relativePaths,
+      ...args,
       "--reporter",
       join(__dirname, "..", "reporters", "json"),
     ],

@@ -28,8 +28,6 @@ import { NetworkManager } from "../plugins/network";
 import { BrowserConsole } from "../plugins/browser-console";
 import { Tracing } from "../plugins/tracing";
 
-export { expect } from "@playwright/test";
-
 type SyntheticsTextFixtures = {
   context: ChromiumBrowserContext;
 };
@@ -42,10 +40,7 @@ type SyntheticsWorkerFixtures = {
   };
 };
 
-export const journey = test.extend<
-  SyntheticsTextFixtures,
-  SyntheticsWorkerFixtures
->({
+const journey = test.extend<SyntheticsTextFixtures, SyntheticsWorkerFixtures>({
   browserName: [({}, use) => use("chromium"), { scope: "worker" }],
   screenshot: "on",
   _plugins: [
@@ -77,3 +72,7 @@ export const journey = test.extend<
     await testInfo.attach("filmstrips", { body: JSON.stringify(filmstrips) });
   },
 });
+
+// export everything from PW
+export * from "@playwright/test";
+export { journey, journey as test };
