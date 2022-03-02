@@ -47,6 +47,7 @@ export const journey = test.extend<
   SyntheticsWorkerFixtures
 >({
   browserName: [({}, use) => use("chromium"), { scope: "worker" }],
+  screenshot: "on",
   _plugins: [
     async ({}, use) => {
       const network = new NetworkManager();

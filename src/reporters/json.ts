@@ -90,23 +90,6 @@ type OutputFields = {
   blob_mime?: string;
 };
 
-type ScreenshotBlob = {
-  blob: string;
-  id: string;
-};
-
-type ScreenshotReference = {
-  width: number;
-  height: number;
-  blocks: Array<{
-    hash: string;
-    top: number;
-    left: number;
-    width: number;
-    height: number;
-  }>;
-};
-
 function journeyInfo(
   journey: OutputFields["journey"],
   type: OutputFields["type"],
@@ -254,7 +237,6 @@ class JSONReporter implements Reporter {
   stepCount = 0;
 
   constructor() {
-    // this.stepCount = 0;
     this.fd = process.stdout.fd;
     this.stream = new SonicBoom({ fd: this.fd, sync: true, minLength: 1 });
   }
@@ -309,17 +291,14 @@ class JSONReporter implements Reporter {
 
   onTestEnd(test: TestCase, result: TestResult): void {
     const journey = { name: test.title, id: test.title };
-
     const filmstrips = result.attachments.find(
       (att) => att.name === "filmstrips"
     );
-
-    console.log(JSON.parse(filmstrips.body.toString()));
-
     const screenshots = result.attachments.filter(
       (att) => att.name === "screenshot"
     );
     const network = result.attachments.find((att) => att.name === "network");
+
     if (network) {
       const networkInfo: NetworkInfo[] = JSON.parse(network.body.toString());
       networkInfo.forEach((ni) => {
@@ -394,7 +373,7 @@ class JSONReporter implements Reporter {
     if (typeof message == "object") {
       message = JSON.stringify(message);
     }
-    this.stream.write(message + "\n");
+    process.stdout.write(message + "\n");
   }
 }
 export default JSONReporter;
