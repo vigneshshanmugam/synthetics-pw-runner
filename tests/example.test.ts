@@ -1,4 +1,4 @@
-import { journey } from "../src/core";
+import { journey, expect } from "../src/core";
 
 journey("synthetics compatability", async ({ page }) => {
   await journey.step("Go to example page", async () => {

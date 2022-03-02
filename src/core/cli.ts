@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 import { Command } from "commander";
 import { spawn } from "child_process";
 import { join, resolve } from "path";
