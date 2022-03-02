@@ -35,7 +35,7 @@ import {
 } from "@playwright/test/reporter";
 import SonicBoom from "sonic-boom";
 import fs from "fs";
-import { Params, NetworkInfo } from "../common_types";
+import { Params, NetworkInfo, StatusValue } from "../common_types";
 import snakeCaseKeys from "snakecase-keys";
 import { formatError, getTimestamp, getDurationInUs } from "../helpers";
 
@@ -57,7 +57,7 @@ type Payload = {
   source?: string;
   duration?: number;
   url?: string;
-  status?: TestStatus | number;
+  status?: StatusValue | number;
   params?: Params;
   type?: OutputType;
   text?: string;
@@ -68,6 +68,15 @@ type Journey = {
   name: string;
   id?: string;
   callback?: () => void;
+};
+
+type Step = {
+  name: string;
+  index: number;
+  endTime: number;
+  duration: {
+    us: number;
+  };
 };
 
 type OutputFields = {
@@ -89,6 +98,14 @@ type OutputFields = {
   blob?: string;
   blob_mime?: string;
 };
+
+function getStatus(status: TestStatus): StatusValue {
+  return status == "passed"
+    ? "succeeded"
+    : status === "timedOut"
+    ? "skipped"
+    : status;
+}
 
 function journeyInfo(
   journey: OutputFields["journey"],
@@ -234,7 +251,7 @@ export function formatNetworkFields(network: NetworkInfo) {
 class JSONReporter implements Reporter {
   stream: SonicBoom;
   fd: number;
-  stepCount = 0;
+  steps: Step[] = [];
 
   constructor() {
     this.fd = process.stdout.fd;
@@ -266,25 +283,28 @@ class JSONReporter implements Reporter {
     });
   }
 
-  onStepEnd(test: TestCase, result: TestResult, step: TestStep) {
-    if (step.category !== "test.step") {
+  onStepEnd(test: TestCase, result: TestResult, pwStep: TestStep) {
+    if (pwStep.category !== "test.step") {
       return;
     }
-    this.stepCount++;
+
+    const step = {
+      name: pwStep.title,
+      index: this.steps.length + 1,
+      endTime: getTimestamp() / 1e6,
+      duration: {
+        us: getDurationInUs(pwStep.duration),
+      },
+    };
+    this.steps.push(step);
 
     this.writeJSON({
       type: "step/end",
       journey: { name: test.title, id: test.title },
-      step: {
-        name: step.title,
-        index: this.stepCount,
-        duration: {
-          us: getDurationInUs(step.duration),
-        },
-      },
-      error: formatError(step.error),
+      step,
+      error: formatError(pwStep.error),
       payload: {
-        status: result.status,
+        status: pwStep.error ? "failed" : "succeeded",
       },
     });
   }
@@ -303,9 +323,11 @@ class JSONReporter implements Reporter {
       const networkInfo: NetworkInfo[] = JSON.parse(network.body.toString());
       networkInfo.forEach((ni) => {
         const { ecs, payload } = formatNetworkFields(ni);
+        const step = this.steps.find((step) => ni.loadEndTime <= step.endTime);
         this.writeJSON({
           type: "journey/network_info",
           journey,
+          step,
           root_fields: snakeCaseKeys(ecs),
           payload: snakeCaseKeys(payload),
         });
@@ -313,11 +335,12 @@ class JSONReporter implements Reporter {
     }
 
     if (screenshots.length > 0) {
-      screenshots.map((screenshot) => {
+      screenshots.map((screenshot, index) => {
         try {
           const buffer = fs.readFileSync(screenshot.path, "base64");
           this.writeJSON({
             type: "step/screenshot",
+            step: this.steps[index],
             journey,
             blob: buffer,
             blob_mime: "image/png",
@@ -332,13 +355,15 @@ class JSONReporter implements Reporter {
       error: formatError(result.error),
       payload: {
         duration: getDurationInUs(result.duration),
-        status: result.status,
+        status: getStatus(result.status),
       },
     });
+    this.steps = [];
   }
 
-  onEnd(result: FullResult) {
+  onEnd() {
     this.stream.flush();
+    this.steps = [];
   }
 
   writeJSON({

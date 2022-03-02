@@ -1,6 +1,7 @@
 {
   "name": "synthetics-runner",
   "version": "0.0.0",
+  "private": true,
   "description": "Synthetics runner using Playwright test",
   "main": "lib/core/index.js",
   "bin": {
