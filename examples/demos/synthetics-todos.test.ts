@@ -1,6 +1,6 @@
 import { journey, expect } from "synthetics-runner";
 
-journey("check if title is present", async ({ page }) => {
+journey("synthetics agent todos", async ({ page }) => {
   await journey.step("launch app", async () => {
     await page.goto("https://elastic.github.io/synthetics-demo/");
   });
