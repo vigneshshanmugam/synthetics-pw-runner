@@ -19,12 +19,14 @@
     "url": "https://github.com/elastic/apm-agent-rum-js.git"
   },
   "dependencies": {
+    "@babel/code-frame": "^7.16.7",
     "@playwright/test": "^1.19.2",
     "commander": "^9.0.0",
     "kleur": "^4.1.4",
     "playwright": "^1.19.2",
     "snakecase-keys": "^5.1.2",
-    "sonic-boom": "^2.6.0"
+    "sonic-boom": "^2.6.0",
+    "stack-utils": "^2.0.5"
   },
   "devDependencies": {
     "typescript": "^4.6.2"

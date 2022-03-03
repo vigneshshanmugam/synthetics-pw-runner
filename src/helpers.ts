@@ -30,7 +30,8 @@ import fs from "fs";
 import { promisify } from "util";
 import { performance } from "perf_hooks";
 import { HooksArgs, HooksCallback } from "./common_types";
-import { TestError } from "@playwright/test";
+import { FullConfig, TestError } from "@playwright/test";
+import { formatPWError } from "./pwerror";
 
 const lstatAsync = promisify(fs.lstat);
 const readdirAsync = promisify(fs.readdir);
@@ -184,16 +185,15 @@ export async function totalist(
   });
 }
 
-export function formatError(error: TestError) {
+export function formatError(error: TestError, config: FullConfig) {
   if (!error) {
     return;
   }
-
-  const { message, stack } = error;
+  const formatted = formatPWError(config, error, true);
   return {
-    name: message,
-    message,
-    stack,
+    name: error.message,
+    message: error.message,
+    stack: formatted,
   };
 }
 
@@ -205,6 +205,6 @@ const cwd = process.cwd();
  */
 export const CACHE_PATH = join(cwd, ".synthetics", process.pid.toString());
 
-export function getDurationInUs(duration: number) {
-  return Math.trunc(duration * 1e6);
+export function milliToMicros(duration: number) {
+  return Math.trunc(duration * 1e3);
 }

@@ -7,7 +7,7 @@ journey("check if title is present", async ({ page }) => {
 
   await journey.step("assert title", async () => {
     const header = await page.waitForSelector("h1");
-    expect(await header.textContent()).toBe("todos");
+    expect(await header.textContent()).toBe("todo");
   });
 });
 

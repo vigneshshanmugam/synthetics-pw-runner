@@ -29,15 +29,15 @@ import {
   TestResult,
   TestStep,
   Suite,
-  FullResult,
   FullConfig,
   TestStatus,
 } from "@playwright/test/reporter";
 import SonicBoom from "sonic-boom";
+import { codeFrameColumns } from "@babel/code-frame";
 import fs from "fs";
 import { Params, NetworkInfo, StatusValue } from "../common_types";
 import snakeCaseKeys from "snakecase-keys";
-import { formatError, getTimestamp, getDurationInUs } from "../helpers";
+import { formatError, getTimestamp, milliToMicros } from "../helpers";
 
 type OutputType =
   | "synthetics/metadata"
@@ -248,8 +248,17 @@ export function formatNetworkFields(network: NetworkInfo) {
   return { ecs, payload };
 }
 
+function codeFrame(rawLines: string, start: number, end: number) {
+  const NEWLINE = /\r\n|[\n\r\u2028\u2029]/;
+  return rawLines
+    .split(NEWLINE)
+    .slice(start - 1, end ? end - 1 : undefined)
+    .join("\n");
+}
+
 class JSONReporter implements Reporter {
   stream: SonicBoom;
+  config!: FullConfig;
   fd: number;
   steps: Step[] = [];
 
@@ -263,6 +272,7 @@ class JSONReporter implements Reporter {
   }
 
   onBegin(config: FullConfig<{}, {}>, suite: Suite): void {
+    this.config = config;
     this.writeJSON({
       type: "synthetics/metadata",
       root_fields: {
@@ -272,14 +282,34 @@ class JSONReporter implements Reporter {
   }
 
   onTestBegin(test: TestCase, result: TestResult): void {
-    const journey: Journey = {
-      name: test.title,
-      id: test.title,
-      callback: () => "",
+    let journeySource = "";
+    const findTestIndex = () => {
+      return test.parent.tests.findIndex((value) => value.title === test.title);
     };
+    const endLocation = (): TestCase["location"] => {
+      const index = findTestIndex();
+      return test.parent.tests[index + 1]?.location;
+    };
+
+    if (test.location) {
+      try {
+        const source = fs.readFileSync(test.location.file, "utf-8");
+        const code: string = codeFrame(
+          source,
+          test.location.line,
+          endLocation()?.line
+        );
+        journeySource = code;
+      } catch {}
+    }
+
     this.writeJSON({
       type: "journey/start",
-      journey,
+      journey: {
+        name: test.title,
+        id: test.title,
+      },
+      payload: { source: journeySource },
     });
   }
 
@@ -287,24 +317,38 @@ class JSONReporter implements Reporter {
     if (pwStep.category !== "test.step") {
       return;
     }
-
+    let stepSource = "";
+    if (pwStep.location) {
+      try {
+        const source = fs.readFileSync(pwStep.location.file, "utf-8");
+        const codeFrame: string = codeFrameColumns(
+          source,
+          {
+            start: pwStep.location,
+          },
+          { linesAbove: 0 }
+        );
+        stepSource = codeFrame;
+      } catch {}
+    }
     const step = {
       name: pwStep.title,
       index: this.steps.length + 1,
       endTime: getTimestamp() / 1e6,
       duration: {
-        us: getDurationInUs(pwStep.duration),
+        us: milliToMicros(pwStep.duration),
       },
     };
-    this.steps.push(step);
 
+    this.steps.push(step);
     this.writeJSON({
       type: "step/end",
       journey: { name: test.title, id: test.title },
       step,
-      error: formatError(pwStep.error),
+      error: formatError(pwStep.error, this.config),
       payload: {
         status: pwStep.error ? "failed" : "succeeded",
+        source: stepSource,
       },
     });
   }
@@ -352,9 +396,9 @@ class JSONReporter implements Reporter {
     this.writeJSON({
       type: "journey/end",
       journey,
-      error: formatError(result.error),
+      error: formatError(result.error, this.config),
       payload: {
-        duration: getDurationInUs(result.duration),
+        duration: milliToMicros(result.duration),
         status: getStatus(result.status),
       },
     });
@@ -389,7 +433,7 @@ class JSONReporter implements Reporter {
       payload,
       blob,
       blob_mime,
-      error: formatError(error),
+      error,
       url,
     });
   }
@@ -398,7 +442,7 @@ class JSONReporter implements Reporter {
     if (typeof message == "object") {
       message = JSON.stringify(message);
     }
-    process.stdout.write(message + "\n");
+    this.stream.write(message + "\n");
   }
 }
 export default JSONReporter;

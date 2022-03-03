@@ -39,6 +39,7 @@ type CLIArgs = {
 };
 
 async function runTests(args: Array<string>, options: CLIArgs) {
+  process.env.FORCE_COLOR = "0";
   const fd = options.outfd || process.stdout.fd;
   const stream = new SonicBoom({ fd, sync: true, minLength: 1 });
   const pwBin = require.resolve("playwright/cli");
