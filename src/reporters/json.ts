@@ -256,6 +256,31 @@ function codeFrame(rawLines: string, start: number, end: number) {
     .join("\n");
 }
 
+function hasTestStep(result: TestResult) {
+  return result.steps.some((step) => {
+    return step.category === "test.step";
+  });
+}
+
+function getStepSource(location: TestStep["location"]) {
+  if (!location) {
+    return "";
+  }
+
+  try {
+    const source = fs.readFileSync(location.file, "utf-8");
+    const codeFrame: string = codeFrameColumns(
+      source,
+      {
+        start: location,
+      },
+      { linesAbove: 0 }
+    );
+    return codeFrame;
+  } catch {}
+  return "";
+}
+
 class JSONReporter implements Reporter {
   stream: SonicBoom;
   config!: FullConfig;
@@ -317,20 +342,6 @@ class JSONReporter implements Reporter {
     if (pwStep.category !== "test.step") {
       return;
     }
-    let stepSource = "";
-    if (pwStep.location) {
-      try {
-        const source = fs.readFileSync(pwStep.location.file, "utf-8");
-        const codeFrame: string = codeFrameColumns(
-          source,
-          {
-            start: pwStep.location,
-          },
-          { linesAbove: 0 }
-        );
-        stepSource = codeFrame;
-      } catch {}
-    }
     const step = {
       name: pwStep.title,
       index: this.steps.length + 1,
@@ -348,13 +359,35 @@ class JSONReporter implements Reporter {
       error: formatError(pwStep.error, this.config),
       payload: {
         status: pwStep.error ? "failed" : "succeeded",
-        source: stepSource,
+        source: getStepSource(pwStep.location),
       },
     });
   }
 
   onTestEnd(test: TestCase, result: TestResult): void {
     const journey = { name: test.title, id: test.title };
+    const parentStep = {
+      name: test.title,
+      index: 1,
+      endTime: getTimestamp() / 1e6,
+      duration: {
+        us: milliToMicros(result.duration),
+      },
+    };
+    if (!hasTestStep(result)) {
+      this.steps.push(parentStep);
+      this.writeJSON({
+        type: "step/end",
+        journey,
+        step: parentStep,
+        error: formatError(result.error, this.config),
+        payload: {
+          status: getStatus(result.status),
+          source: getStepSource(test.location),
+        },
+      });
+    }
+
     const filmstrips = result.attachments.find(
       (att) => att.name === "filmstrips"
     );
